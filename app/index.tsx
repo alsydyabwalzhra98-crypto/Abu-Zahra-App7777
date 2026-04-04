@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function SplashScreen() {
   const router = useRouter();
