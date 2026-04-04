@@ -64,7 +64,8 @@
         {
           "microphonePermission": "يحتاج التطبيق إلى الميكروفون لإجراء المكالمات الصوتية"
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "scheme": "abu-alzahra-voip",
     "extra": {
