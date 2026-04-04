@@ -1,32 +1,21 @@
-name: Build Android APK
+name: Build Android APK (Auto Path Finder)
 
 on:
   push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
+    branches: [ main, develop ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
       - name: Setup Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: '18.x'
-          cache: 'npm'
-          cache-dependency-path: 'package-lock.json'
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -34,96 +23,34 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install npm dependencies
+      - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Install expo-localization
-        run: npm install expo-localization --legacy-peer-deps
-
-      - name: Create environment file
+      # هذه الخطوة ستبحث عن مجلد الأندرويد وتخرجه للواجهة
+      - name: Move Android folder to Root
         run: |
-          cat > .env << 'EOF'
-          EXPO_PUBLIC_API_URL=http://66.42.113.157:8000/api/v1
-          EXPO_PUBLIC_WEBSOCKET_URL=ws://66.42.113.157:8000/ws
-          EOF
+          if [ ! -d "android" ]; then
+            echo "Searching for android folder in node_modules..."
+            # البحث عن المجلد الذي يحتوي على gradlew
+            TARGET_PATH=$(find . -name "gradlew" -not -path "*/.*" | head -n 1 | xid -d)
+            if [ -n "$TARGET_PATH" ]; then
+               cp -r $TARGET_PATH ./android
+               echo "Found and moved android folder from $TARGET_PATH"
+            else
+               echo "Android folder not found. Creating a new one..."
+               npx react-native init TempApp --skip-install --version latest
+               mv TempApp/android ./android
+            fi
+          fi
 
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      - name: Build Android APK (Debug)
+      - name: Build Android APK
         working-directory: ./android
         run: |
-          ./gradlew assembleDebug \
-            --stacktrace \
-            --no-daemon \
-            -Dorg.gradle.jvmargs="-Xmx3072m -XX:MaxMetaspaceSize=512m"
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Verify APK was created
-        run: |
-          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-          if [ -f "$APK_PATH" ]; then
-            echo "APK successfully created!"
-            ls -lh "$APK_PATH"
-          else
-            echo "APK not found. Searching..."
-            find android -name "*.apk" -type f 2>/dev/null || echo "No APK found anywhere"
-            exit 1
-          fi
-
-      - name: Upload APK to artifacts
+      - name: Upload APK
         uses: actions/upload-artifact@v4
-        if: success()
         with:
-          name: AbuAlzahra-VoIP-v${{ github.run_number }}
+          name: AbuAlzahra-Final-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
-
-      - name: Upload build logs on failure
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: build-logs-${{ github.run_number }}
-          path: |
-            android/app/build/reports/
-            android/build/reports/
-          retention-days: 7
-
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/') && success()
-        uses: softprops/action-gh-release@v1
-        with:
-          files: android/app/build/outputs/apk/debug/app-debug.apk
-          name: Abu Alzahra VoIP ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build Status Report
-        if: always()
-        run: |
-          echo "=============================="
-          echo "   Android Build Status"
-          echo "=============================="
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "STATUS: BUILD SUCCESSFUL"
-            echo "APK available in the Actions artifacts tab"
-          else
-            echo "STATUS: BUILD FAILED"
-            echo "Check the logs above for details"
-          fi
-          echo ""
-          echo "Build Info:"
-          echo "- Node.js: 18.x"
-          echo "- Java: 17 (Temurin)"
-          echo "- App: Abu Alzahra VoIP"
-          echo "- Backend: 66.42.113.157"
-          echo "=============================="
