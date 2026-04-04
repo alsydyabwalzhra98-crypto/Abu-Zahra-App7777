@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK (Manual CLI)
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: '18.x'
@@ -27,23 +27,36 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      # هذه هي الخطوة الأهم: إنشاء مجلد android تلقائياً
-      - name: Expo Prebuild
-        run: npx expo prebuild --platform android
+      # 1. إنشاء مجلدات الأصول (Assets) يدوياً لتجنب أخطاء الفقدان
+      - name: Create Android Assets Folder
+        run: mkdir -p android/app/src/main/assets
 
+      # 2. توليد ملف الـ Bundle الخاص بـ JavaScript يدوياً
+      - name: Generate JS Bundle
+        run: |
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res
+
+      # 3. إنشاء ملف البيئة
       - name: Create environment file
         run: |
           echo "EXPO_PUBLIC_API_URL=http://66.42.113.157:8000/api/v1" > .env
           echo "EXPO_PUBLIC_WEBSOCKET_URL=ws://66.42.113.157:8000/ws" >> .env
 
+      # 4. بناء الـ APK باستخدام Gradle
       - name: Build Android APK (Debug)
         working-directory: ./android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      # 5. رفع الملف الناتج
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbuAlzahra-App
+          name: AbuAlzahra-Manual-Build
           path: android/app/build/outputs/apk/debug/app-debug.apk
