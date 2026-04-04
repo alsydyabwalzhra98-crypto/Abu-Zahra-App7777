@@ -75,5 +75,5 @@ externalPort = 3000
 [userenv.development]
 
 [userenv.shared]
-EXPO_PUBLIC_API_URL = "https://2eb1f1f7-5861-4429-a4e4-d74037036e2e-00-338d09urjbu12.picard.replit.dev/api/v1"
-EXPO_PUBLIC_WEBSOCKET_URL = "wss://2eb1f1f7-5861-4429-a4e4-d74037036e2e-00-338d09urjbu12.picard.replit.dev/ws"
+EXPO_PUBLIC_API_URL = "https://abualzahracom.online"
+EXPO_PUBLIC_WEBSOCKET_URL = "ws://abualzahracom.online/ws"
