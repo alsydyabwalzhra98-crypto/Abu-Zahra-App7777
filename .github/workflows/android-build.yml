@@ -1,4 +1,4 @@
-name: Build Android APK (Manual CLI)
+name: Build Android APK (Auto CLI)
 
 on:
   push:
@@ -16,7 +16,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18.x'
-          cache: 'npm'
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -27,36 +26,24 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      # 1. إنشاء مجلدات الأصول (Assets) يدوياً لتجنب أخطاء الفقدان
-      - name: Create Android Assets Folder
-        run: mkdir -p android/app/src/main/assets
-
-      # 2. توليد ملف الـ Bundle الخاص بـ JavaScript يدوياً
-      - name: Generate JS Bundle
+      # بدلاً من توليد Bundle، سنقوم بإنشاء هيكل أندرويد إذا كان مفقوداً
+      - name: Initialize Android Structure
         run: |
-          npx react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file index.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res
+          if [ ! -d "android" ]; then
+            npx react-native ctx-clean || true
+            npx react-native init TempApp --version latest --skip-install
+            mv TempApp/android ./android
+            rm -rf TempApp
+          fi
 
-      # 3. إنشاء ملف البيئة
-      - name: Create environment file
-        run: |
-          echo "EXPO_PUBLIC_API_URL=http://66.42.113.157:8000/api/v1" > .env
-          echo "EXPO_PUBLIC_WEBSOCKET_URL=ws://66.42.113.157:8000/ws" >> .env
-
-      # 4. بناء الـ APK باستخدام Gradle
-      - name: Build Android APK (Debug)
+      - name: Build Android APK
         working-directory: ./android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx2048m"
 
-      # 5. رفع الملف الناتج
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AbuAlzahra-Manual-Build
+          name: AbuAlzahra-App
           path: android/app/build/outputs/apk/debug/app-debug.apk
