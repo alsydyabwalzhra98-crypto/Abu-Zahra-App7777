@@ -1,4 +1,4 @@
-name: Build Android APK (Direct Search)
+name: Build Android APK (Final Solution)
 
 on:
   push:
@@ -26,30 +26,21 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Find and Build APK
+      # خطوة سحرية: إنشاء هيكل أندرويد رسمي متوافق مع كودك
+      - name: Generate Android Project
         run: |
-          # البحث عن مكان ملف gradlew الفعلي داخل المستودع
-          GRADLEW_PATH=$(find . -name "gradlew" -not -path "*/.*" | head -n 1)
-          
-          if [ -z "$GRADLEW_PATH" ]; then
-            echo "خطأ: لم يتم العثور على ملف gradlew في أي مكان بالمستودع"
-            exit 1
-          fi
-          
-          # الحصول على المجلد الذي يحتوي على الملف
-          GRADLE_DIR=$(dirname "$GRADLEW_PATH")
-          echo "تم العثور على ملف البناء في: $GRADLE_DIR"
-          
-          # إعطاء صلاحيات التشغيل
-          chmod +x "$GRADLEW_PATH"
-          
-          # بدء البناء من ذلك المجلد
-          cd "$GRADLE_DIR"
+          npx react-native init TempApp --version latest --skip-install
+          mv TempApp/android ./android
+          rm -rf TempApp
+
+      - name: Build Android APK
+        working-directory: ./android
+        run: |
+          chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Upload Result
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AbuAlzahra-App
-          # هذا الأمر سيبحث عن أي ملف APK تم إنتاجه ويرفعه لك
-          path: "**/*.apk"
+          name: AbuAlzahra-Success-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
