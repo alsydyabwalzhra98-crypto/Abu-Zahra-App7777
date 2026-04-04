@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: '18.x'
           cache: 'npm'
-          cache-dependency-path: './frontend/package-lock.json'
+          cache-dependency-path: 'package-lock.json'
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -35,15 +35,12 @@ jobs:
           java-version: '17'
 
       - name: Install npm dependencies
-        working-directory: ./frontend
         run: npm install --legacy-peer-deps
 
-      - name: Install expo-localization (if not in package.json)
-        working-directory: ./frontend
+      - name: Install expo-localization
         run: npm install expo-localization --legacy-peer-deps
 
       - name: Create environment file
-        working-directory: ./frontend
         run: |
           cat > .env << 'EOF'
           EXPO_PUBLIC_API_URL=http://66.42.113.157:8000/api/v1
@@ -51,7 +48,7 @@ jobs:
           EOF
 
       - name: Make gradlew executable
-        run: chmod +x ./frontend/android/gradlew
+        run: chmod +x android/gradlew
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
@@ -59,12 +56,12 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('frontend/android/**/*.gradle*', 'frontend/android/**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
       - name: Build Android APK (Debug)
-        working-directory: ./frontend/android
+        working-directory: ./android
         run: |
           ./gradlew assembleDebug \
             --stacktrace \
@@ -73,13 +70,13 @@ jobs:
 
       - name: Verify APK was created
         run: |
-          APK_PATH="frontend/android/app/build/outputs/apk/debug/app-debug.apk"
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
           if [ -f "$APK_PATH" ]; then
             echo "APK successfully created!"
             ls -lh "$APK_PATH"
           else
             echo "APK not found. Searching..."
-            find frontend/android -name "*.apk" -type f 2>/dev/null || echo "No APK found anywhere"
+            find android -name "*.apk" -type f 2>/dev/null || echo "No APK found anywhere"
             exit 1
           fi
 
@@ -88,7 +85,7 @@ jobs:
         if: success()
         with:
           name: AbuAlzahra-VoIP-v${{ github.run_number }}
-          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
       - name: Upload build logs on failure
@@ -97,15 +94,15 @@ jobs:
         with:
           name: build-logs-${{ github.run_number }}
           path: |
-            frontend/android/app/build/reports/
-            frontend/android/build/reports/
+            android/app/build/reports/
+            android/build/reports/
           retention-days: 7
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/') && success()
         uses: softprops/action-gh-release@v1
         with:
-          files: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/app/build/outputs/apk/debug/app-debug.apk
           name: Abu Alzahra VoIP ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -127,10 +124,6 @@ jobs:
           echo "Build Info:"
           echo "- Node.js: 18.x"
           echo "- Java: 17 (Temurin)"
-          echo "- Gradle: 7.6.3"
-          echo "- AGP: 7.3.1"
-          echo "- Backend: http://66.42.113.157:8000"
           echo "- App: Abu Alzahra VoIP"
-          echo "- Package: com.abualzahra.voip"
+          echo "- Backend: 66.42.113.157"
           echo "=============================="
-
