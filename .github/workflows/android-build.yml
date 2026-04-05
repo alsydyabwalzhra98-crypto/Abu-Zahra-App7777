@@ -1,4 +1,4 @@
-name: Build Android APK (Final Solution)
+name: Build Android APK (Stable Solution)
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node.js 18
         uses: actions/setup-node@v4
         with:
-          node-version: '18.x'
+          node-version: '18.20.0' # إصدار محدد للمزيد من الاستقرار
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -26,10 +26,10 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      # خطوة سحرية: إنشاء هيكل أندرويد رسمي متوافق مع كودك
-      - name: Generate Android Project
+      # هذه الخطوة تتجنب خطأ styleText باستخدام الأمر الرسمي الأحدث
+      - name: Generate Android Structure
         run: |
-          npx react-native init TempApp --version latest --skip-install
+          npx @react-native-community/cli init TempApp --version latest --skip-install --no-interactive
           mv TempApp/android ./android
           rm -rf TempApp
 
@@ -42,5 +42,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AbuAlzahra-Success-APK
+          name: AbuAlzahra-App
           path: android/app/build/outputs/apk/debug/app-debug.apk
