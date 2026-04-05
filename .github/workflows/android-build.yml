@@ -29,24 +29,32 @@ jobs:
           java-version: 17
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        # استخدمنا npm install بدلاً من ci لأن الأخير يحتاج ملف lock مطابق تماماً
+        run: npm install --legacy-peer-deps
 
+      # قمنا بتعديل الخطوة التي سببت الخطأ في الصورة
       - name: Verify Expo project
-        run: npx expo doctor --non-interactive
+        run: npx expo-doctor
 
+      # تعديل أمر prebuild ليكون أكثر استقراراً في السيرفر
       - name: Generate Android project
-        run: npx expo prebuild --platform android --non-interactive --clean
+        run: npx expo prebuild --platform android --no-interactive
 
       - name: Make Gradle wrapper executable
         run: chmod +x android/gradlew
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: |
+          ./gradlew assembleDebug \
+            --no-daemon \
+            -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m"
 
       - name: Find APK
         id: apk
-        run: echo "path=$(find android -name '*.apk' | head -n 1)" >> $GITHUB_OUTPUT
+        run: |
+          APK_PATH=$(find android -name "*.apk" | head -n 1)
+          echo "path=$APK_PATH" >> $GITHUB_OUTPUT
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
