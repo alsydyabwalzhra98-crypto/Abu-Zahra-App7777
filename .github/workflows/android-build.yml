@@ -1,46 +1,56 @@
-name: Build Android APK (Stable Solution)
+name: Build Android APK
 
 on:
-  push:
-    branches: [ main, develop ]
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 18
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18.20.0' # إصدار محدد للمزيد من الاستقرار
+          node-version: 20
+          cache: npm
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
 
-      # هذه الخطوة تتجنب خطأ styleText باستخدام الأمر الرسمي الأحدث
-      - name: Generate Android Structure
-        run: |
-          npx @react-native-community/cli init TempApp --version latest --skip-install --no-interactive
-          mv TempApp/android ./android
-          rm -rf TempApp
+      - name: Verify Expo project
+        run: npx expo doctor --non-interactive
 
-      - name: Build Android APK
-        working-directory: ./android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --non-interactive --clean
 
-      - name: Upload APK
+      - name: Make Gradle wrapper executable
+        run: chmod +x android/gradlew
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Find APK
+        id: apk
+        run: echo "path=$(find android -name '*.apk' | head -n 1)" >> $GITHUB_OUTPUT
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbuAlzahra-App
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: abu-alzahra-android-apk
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
